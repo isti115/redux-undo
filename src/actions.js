@@ -14,14 +14,14 @@ export const ActionCreators = {
   redo () {
     return { type: ActionTypes.REDO }
   },
-  jumpToFuture (index) {
-    return { type: ActionTypes.JUMP_TO_FUTURE, index }
+  jumpToFuture (payload) {
+    return { type: ActionTypes.JUMP_TO_FUTURE, payload }
   },
-  jumpToPast (index) {
-    return { type: ActionTypes.JUMP_TO_PAST, index }
+  jumpToPast (payload) {
+    return { type: ActionTypes.JUMP_TO_PAST, payload }
   },
-  jump (index) {
-    return { type: ActionTypes.JUMP, index }
+  jump (payload) {
+    return { type: ActionTypes.JUMP, payload }
   },
   clearHistory () {
     return { type: ActionTypes.CLEAR_HISTORY }

@@ -169,20 +169,20 @@ export default function undoable (reducer, rawConfig = {}) {
         return skipReducer(res, action, ...slices)
 
       case config.jumpToPastType:
-        res = jumpToPast(history, action.index)
-        debug.log(`perform jumpToPast to ${action.index}`)
+        res = jumpToPast(history, action.payload)
+        debug.log(`perform jumpToPast to ${action.payload}`)
         debug.end(res)
         return skipReducer(res, action, ...slices)
 
       case config.jumpToFutureType:
-        res = jumpToFuture(history, action.index)
-        debug.log(`perform jumpToFuture to ${action.index}`)
+        res = jumpToFuture(history, action.payload)
+        debug.log(`perform jumpToFuture to ${action.payload}`)
         debug.end(res)
         return skipReducer(res, action, ...slices)
 
       case config.jumpType:
-        res = jump(history, action.index)
-        debug.log(`perform jump to ${action.index}`)
+        res = jump(history, action.payload)
+        debug.log(`perform jump to ${action.payload}`)
         debug.end(res)
         return skipReducer(res, action, ...slices)
 

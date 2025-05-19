@@ -18,9 +18,9 @@ declare module 'redux-undo' {
   export class ActionCreators {
     static undo: () => Action;
     static redo: () => Action;
-    static jump: (point: number) => Action;
-    static jumpToPast: (index: number) => Action;
-    static jumpToFuture: (index: number) => Action;
+    static jump: (payload: number) => Action;
+    static jumpToPast: (payload: number) => Action;
+    static jumpToFuture: (payload: number) => Action;
     static clearHistory: () => Action;
   }
 
