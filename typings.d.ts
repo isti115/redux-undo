@@ -1,19 +1,19 @@
 declare module 'redux-undo' {
   import { Reducer, Action, AnyAction } from 'redux';
 
-  export interface StateWithHistory<State> {
-    past: State[];
+  export interface StateWithHistory<State, CapturedState = State> {
+    past: CapturedState[];
     present: State;
-    future: State[];
+    future: CapturedState[];
     _latestUnfiltered?: State;
     group?: any;
     index?: number;
     limit?: number;
   }
 
-  export type FilterFunction<S = any, A extends Action = AnyAction> = (action: A, currentState: S, previousHistory: StateWithHistory<S>) => boolean;
-  export type GroupByFunction<S = any, A extends Action = AnyAction> = (action: A, currentState: S, previousHistory: StateWithHistory<S>) => any;
-  export type CombineFilters = <S = any, A extends Action = AnyAction>(...filters: FilterFunction<S, A>[]) => FilterFunction<S, A>;
+  export type FilterFunction<S = any, CS = S, A extends Action = AnyAction> = (action: A, currentState: S, previousHistory: StateWithHistory<S, CS>) => boolean;
+  export type GroupByFunction<S = any, CS = S, A extends Action = AnyAction> = (action: A, currentState: S, previousHistory: StateWithHistory<S, CS>) => any;
+  export type CombineFilters = <S = any, CS = S, A extends Action = AnyAction>(...filters: FilterFunction<S, A>[]) => FilterFunction<S, CS, A>;
 
   export class ActionCreators {
     static undo: () => Action;
@@ -33,15 +33,21 @@ declare module 'redux-undo' {
     static CLEAR_HISTORY: string;
   }
 
-  export interface UndoableOptions<S = any, A extends Action = AnyAction> {
+  export interface UndoableOptions<S = any, CS = S, A extends Action = AnyAction> {
     /* Set a limit for the history */
     limit?: number;
 
     /** If you don't want to include every action in the undo/redo history, you can add a filter function to undoable */
-    filter?: FilterFunction<S, A>;
+    filter?: FilterFunction<S, CS, A>;
 
     /** Groups actions together into one undo step */
-    groupBy?: GroupByFunction<S, A>;
+    groupBy?: GroupByFunction<S, CS, A>;
+
+    /** Extracts information from the current state to be retrieved later */
+    capture: (state: S) => CS,
+
+    /** Injects some previously extracted information back into the state */
+    restore: (incoming: CS, current: S) => S,
 
     /** Define a custom action type for this undo action */
     undoType?: string;
@@ -76,13 +82,21 @@ declare module 'redux-undo' {
   }
 
   interface Undoable {
-    <State, A extends Action = AnyAction>(reducer: Reducer<State, A>, options?: UndoableOptions<State, A>): Reducer<StateWithHistory<State>>;
+    <State, CapturedState = State, A extends Action = AnyAction>(
+      reducer: Reducer<State, A>,
+      options?: UndoableOptions<State, CapturedState, A>
+    ): Reducer<StateWithHistory<State, CapturedState>>
   }
 
-  type IncludeAction = <S = any, A extends Action = AnyAction>(actions: A['type'] | A['type'][]) => FilterFunction<S, A>;
+  type IncludeAction = <S = any, CS = S, A extends Action = AnyAction>(actions: A['type'] | A['type'][]) => FilterFunction<S, CS, A>;
   type ExcludeAction = IncludeAction;
-  type GroupByActionTypes = <S = any, A extends Action = AnyAction>(actions: A['type'] | A['type'][]) => GroupByFunction<S, A>;
-  type NewHistory = <State>(past: State[], present: State, future: State[], group?: any) => StateWithHistory<State>;
+  type GroupByActionTypes = <S = any, CS = S, A extends Action = AnyAction>(actions: A['type'] | A['type'][]) => GroupByFunction<S, CS, A>;
+  type NewHistory = <State, CapturedState>(
+    past: CapturedState[],
+    present: State,
+    future: CapturedState[],
+    group?: any
+  ) => StateWithHistory<State, CapturedState>
 
   const undoable: Undoable;
 
@@ -105,5 +119,4 @@ declare module 'redux-undo' {
   export const groupByActionTypes: GroupByActionTypes;
 
   export const newHistory: NewHistory;
-
 }

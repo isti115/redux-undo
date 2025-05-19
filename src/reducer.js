@@ -2,73 +2,6 @@ import * as debug from './debug'
 import { ActionTypes } from './actions'
 import { parseActions, isHistory, newHistory } from './helpers'
 
-// createHistory
-function createHistory (state, ignoreInitialState) {
-  // ignoreInitialState essentially prevents the user from undoing to the
-  // beginning, in the case that the undoable reducer handles initialization
-  // in a way that can't be redone simply
-  const history = newHistory([], state, [])
-  if (ignoreInitialState) {
-    history._latestUnfiltered = null
-  }
-  return history
-}
-
-// insert: insert `state` into history, which means adding the current state
-//         into `past`, setting the new `state` as `present` and erasing
-//         the `future`.
-function insert (history, state, limit, group) {
-  const lengthWithoutFuture = history.past.length + 1
-
-  debug.log('inserting', state)
-  debug.log('new free: ', limit - lengthWithoutFuture)
-
-  const { past, _latestUnfiltered } = history
-  const isHistoryOverflow = limit && limit <= lengthWithoutFuture
-
-  const pastSliced = past.slice(isHistoryOverflow ? 1 : 0)
-  const newPast = _latestUnfiltered != null
-    ? [
-      ...pastSliced,
-      _latestUnfiltered
-    ] : pastSliced
-
-  return newHistory(newPast, state, [], group)
-}
-
-// jump: jump n steps in the past or forward
-function jump (history, n) {
-  const { past, _latestUnfiltered, future, index, limit } = history
-
-  const timeline = [...past, _latestUnfiltered, ...future]
-  const newIndex = index + n
-
-  return (0 <= newIndex && newIndex < limit)
-    ? newHistory(
-        timeline.slice(0, newIndex),
-        timeline[newIndex],
-        timeline.slice(newIndex + 1)
-      )
-    : history
-}
-
-// jumpToFuture: jump to requested index in future history
-const jumpToFuture = (history, index) =>
-  (0 <= index && index < history.future.length)
-    ? jump(history, index + 1)
-    : history
-
-// jumpToPast: jump to requested index in past history
-const jumpToPast = (history, index) =>
-  (0 <= index && index < history.past.length)
-    ? jump(history, -(history.past.length - index))
-    : history
-
-// helper to dynamically match in the reducer's switch-case
-function actionTypeAmongClearHistoryType (actionType, clearHistoryType) {
-  return clearHistoryType.indexOf(actionType) > -1 ? actionType : !actionType
-}
-
 // redux-undo higher order reducer
 export default function undoable (reducer, rawConfig = {}) {
   debug.set(rawConfig.debug)
@@ -77,6 +10,8 @@ export default function undoable (reducer, rawConfig = {}) {
     limit: undefined,
     filter: () => true,
     groupBy: () => null,
+    capture: state => state,
+    restore: (incoming, current) => incoming,
     undoType: ActionTypes.UNDO,
     redoType: ActionTypes.REDO,
     jumpToPastType: ActionTypes.JUMP_TO_PAST,
@@ -93,6 +28,73 @@ export default function undoable (reducer, rawConfig = {}) {
       rawConfig.clearHistoryType,
       [ActionTypes.CLEAR_HISTORY]
     )
+  }
+
+  // createHistory
+  function createHistory (state, ignoreInitialState) {
+    // ignoreInitialState essentially prevents the user from undoing to the
+    // beginning, in the case that the undoable reducer handles initialization
+    // in a way that can't be redone simply
+    const history = newHistory([], state, [])
+    if (ignoreInitialState) {
+      history._latestUnfiltered = null
+    }
+    return history
+  }
+
+  // insert: insert `state` into history, which means adding the current state
+  //         into `past`, setting the new `state` as `present` and erasing
+  //         the `future`.
+  function insert (history, state, limit, group) {
+    const lengthWithoutFuture = history.past.length + 1
+
+    debug.log('inserting', state)
+    debug.log('new free: ', limit - lengthWithoutFuture)
+
+    const { past, _latestUnfiltered } = history
+    const isHistoryOverflow = limit && limit <= lengthWithoutFuture
+
+    const pastSliced = past.slice(isHistoryOverflow ? 1 : 0)
+    const newPast = _latestUnfiltered != null
+      ? [
+        ...pastSliced,
+        config.capture(_latestUnfiltered)
+      ] : pastSliced
+
+    return newHistory(newPast, state, [], group)
+  }
+
+  // jump: jump n steps in the past or forward
+  function jump (history, n) {
+    const { past, _latestUnfiltered, present, future, index, limit } = history
+
+    const timeline = [...past, config.capture(_latestUnfiltered), ...future]
+    const newIndex = index + n
+
+    return (0 <= newIndex && newIndex < limit)
+      ? newHistory(
+          timeline.slice(0, newIndex),
+          config.restore(timeline[newIndex], present),
+          timeline.slice(newIndex + 1)
+        )
+      : history
+  }
+
+  // jumpToFuture: jump to requested index in future history
+  const jumpToFuture = (history, index) =>
+    (0 <= index && index < history.future.length)
+      ? jump(history, index + 1)
+      : history
+
+  // jumpToPast: jump to requested index in past history
+  const jumpToPast = (history, index) =>
+    (0 <= index && index < history.past.length)
+      ? jump(history, -(history.past.length - index))
+      : history
+
+  // helper to dynamically match in the reducer's switch-case
+  function actionTypeAmongClearHistoryType (actionType, clearHistoryType) {
+    return clearHistoryType.indexOf(actionType) > -1 ? actionType : !actionType
   }
 
   // Allows the user to call the reducer with redux-undo specific actions
