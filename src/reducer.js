@@ -36,38 +36,33 @@ function insert (history, state, limit, group) {
   return newHistory(newPast, state, [], group)
 }
 
-// jumpToFuture: jump to requested index in future history
-function jumpToFuture (history, index) {
-  if (index < 0 || index >= history.future.length) return history
-
-  const { past, future, _latestUnfiltered } = history
-
-  const newPast = [...past, _latestUnfiltered, ...future.slice(0, index)]
-  const newPresent = future[index]
-  const newFuture = future.slice(index + 1)
-
-  return newHistory(newPast, newPresent, newFuture)
-}
-
-// jumpToPast: jump to requested index in past history
-function jumpToPast (history, index) {
-  if (index < 0 || index >= history.past.length) return history
-
-  const { past, future, _latestUnfiltered } = history
-
-  const newPast = past.slice(0, index)
-  const newFuture = [...past.slice(index + 1), _latestUnfiltered, ...future]
-  const newPresent = past[index]
-
-  return newHistory(newPast, newPresent, newFuture)
-}
-
 // jump: jump n steps in the past or forward
 function jump (history, n) {
-  if (n > 0) return jumpToFuture(history, n - 1)
-  if (n < 0) return jumpToPast(history, history.past.length + n)
-  return history
+  const { past, _latestUnfiltered, future, index, limit } = history
+
+  const timeline = [...past, _latestUnfiltered, ...future]
+  const newIndex = index + n
+
+  return (0 <= newIndex && newIndex < limit)
+    ? newHistory(
+        timeline.slice(0, newIndex),
+        timeline[newIndex],
+        timeline.slice(newIndex + 1)
+      )
+    : history
 }
+
+// jumpToFuture: jump to requested index in future history
+const jumpToFuture = (history, index) =>
+  (0 <= index && index < history.future.length)
+    ? jump(history, index + 1)
+    : history
+
+// jumpToPast: jump to requested index in past history
+const jumpToPast = (history, index) =>
+  (0 <= index && index < history.past.length)
+    ? jump(history, -(history.past.length - index))
+    : history
 
 // helper to dynamically match in the reducer's switch-case
 function actionTypeAmongClearHistoryType (actionType, clearHistoryType) {
