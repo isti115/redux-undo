@@ -14,6 +14,7 @@
   "scripts": {
     "build": "vite build",
     "lint": "npx eslint src test",
+    "prepare": "npm run build",
     "test": "vitest run",
     "test:bail": "npm run test:watch -- --bail",
     "test:cov": "npm run test -- --coverage",
